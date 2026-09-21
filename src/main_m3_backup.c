@@ -10,8 +10,6 @@
 #include "history.h"
 #include "builtin.h"
 #include "executor.h"
-#include "pipeline.h"
-
 int main(void)
 {
     printf("=====================================\n");
@@ -47,45 +45,15 @@ int main(void)
         }
 
         /*
-         * Check whether this command contains a pipeline.
-         */
-        int has_pipe = 0;
-
-        for (int i = 0; i < tokens.count; i++)
-        {
-            if (tokens.tokens[i].type == TOKEN_PIPE)
-            {
-                has_pipe = 1;
-                break;
-            }
-
-            if (tokens.tokens[i].type == TOKEN_END)
-                break;
-        }
-
-        /*
-         * Pipeline execution
-         */
-        if (has_pipe)
-        {
-            pipeline_t pipeline;
-
-            if (pipeline_build(&tokens, &pipeline) == 0)
-            {
-                execute_pipeline(&pipeline);
-            }
-
-            free(line);
-            continue;
-        }
-
-        /*
-         * Check for built-in commands.
+         * Check for built-in commands
          */
         if (tokens.count > 0 &&
             tokens.tokens[0].type == TOKEN_WORD &&
             is_builtin(tokens.tokens[0].text))
         {
+            /*
+             * Create argument array for builtin
+             */
             char *argv[MAX_TOKENS];
             int argc = 0;
 
@@ -102,8 +70,14 @@ int main(void)
 
             argv[argc] = NULL;
 
+            /*
+             * Execute builtin
+             */
             int result = execute_builtin(argv);
 
+            /*
+             * Builtin exit
+             */
             if (strcmp(argv[0], "exit") == 0 && result == 1)
             {
                 free(line);
@@ -115,30 +89,30 @@ int main(void)
         }
 
         /*
-         * Ordinary external command.
-         */
-        char *argv[MAX_TOKENS];
-        int argc = 0;
+ * Execute external command
+ */
+char *argv[MAX_TOKENS];
+int argc = 0;
 
-        for (int i = 0; i < tokens.count; i++)
-        {
-            if (tokens.tokens[i].type == TOKEN_END)
-                break;
+for (int i = 0; i < tokens.count; i++)
+{
+    if (tokens.tokens[i].type == TOKEN_END)
+        break;
 
-            if (tokens.tokens[i].type != TOKEN_WORD)
-                break;
+    if (tokens.tokens[i].type != TOKEN_WORD)
+        break;
 
-            argv[argc++] = tokens.tokens[i].text;
-        }
+    argv[argc++] = tokens.tokens[i].text;
+}
 
-        argv[argc] = NULL;
+argv[argc] = NULL;
 
-        if (argc > 0)
-        {
-            execute_command(argv);
-        }
+if (argc > 0)
+{
+    execute_external(argv);
+}
 
-        free(line);
+free(line);
     }
 
     history_free();
